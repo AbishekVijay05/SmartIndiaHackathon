@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Wipe Tool - Zero Leaks{% endblock %}
+{% block content %}
+<style>
+    .path-input-group { display: flex; }
+    .path-input-group input { flex-grow: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+    .path-input-group button { border-top-left-radius: 0; border-bottom-left-radius: 0; width: auto; padding: 10px 15px; }
+    .radio-group { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 10px; }
+    .radio-group label { color: var(--text-light); }
+    .status-bar { width: 100%; padding: 10px; margin-top: 15px; border-radius: 4px; text-align: center; font-weight: 700; display: none; box-sizing: border-box; }
+    .status-success { background-color: var(--accent-green); color: white; }
+    .status-error { background-color: #dc3545; color: white; }
+    #log-output { width: 100%; height: 200px; background-color: var(--bg-dark); color: #00ff41; font-family: 'Inconsolata', monospace; padding: 15px; border: 1px solid var(--bg-light); border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; box-sizing: border-box; overflow-y: auto; transition: border-color 0.2s ease-in-out; }
+    #log-output:hover { border-color: #FFFFFF; }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+    .modal-content { background-color: var(--bg-medium); margin: auto; padding: 20px; border: 1px solid var(--bg-light); width: 80%; max-width: 700px; border-radius: 8px; color: var(--text-light); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; }
+    .modal-header button { background-color: var(--accent-blue); }
+    .close-button { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .file-browser { height: 400px; overflow-y: auto; background: var(--bg-dark); padding: 10px; margin-top: 10px; }
+    .file-browser ul { list-style-type: none; padding: 0; }
+    .file-browser li { padding: 5px; cursor: pointer; border-radius: 3px; }
+    .file-browser li:hover { background-color: var(--bg-light); }
+</style>
+<h1>Zero Leaks - Data Wiper</h1>
+<form id="wipe-form">
+    <div class="form-group">
+        <label>Target Type:</label>
+        <div class="radio-group">
+            <label><input type="radio" name="wipe_type" value="file" checked> File</label>
+            <label><input type="radio" name="wipe_type" value="folder"> Folder</label>
+            <label><input type="radio" name="wipe_type" value="disk"> Entire Disk (HDD/SSD)</label>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="path-display">Target Path:</label>
+        <div class="path-input-group">
+            <input type="text" id="path-display" placeholder="Click Browse to select..." readonly required>
+            <button type="button" id="browse-btn">Browse...</button>
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="wipe-method">Wiping Method:</label>
+        <select id="wipe-method" style="width: 100%; padding: 10px; background-color: #343a40; border: 1px solid #6c757d; border-radius: 4px; color: #f8f9fa;">
+            <option value="--clear">Clear (1 Pass Zeros - NIST 800-88)</option>
+            <option value="--purge" selected>Purge (3 Pass Overwrite - DoD 5220.22-M)</option>
+            <option value="--destroy-sw">Destroy (7 Pass Overwrite - Software-Based)</option>
+        </select>
+    </div>
+    <button type="submit" style="width: 100%;">Start Wipe</button>
+</form>
+<div id="status-bar" class="status-bar"></div>
+<div style="margin-top: 25px;">
+    <label>Log Output:</label>
+    <pre id="log-output">Awaiting command...</pre>
+</div>
+<div id="browser-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modal-path">Browser</h2>
+            <button type="button" id="select-folder-btn" style="display:none;">Select This Folder</button>
+            <span class="close-button">&times;</span>
+        </div>
+        <div id="modal-browser" class="file-browser"></div>
+    </div>
+</div>
+<script>
+    const wipeForm = document.getElementById('wipe-form');
+    const statusBar = document.getElementById('status-bar');
+    const logOutput = document.getElementById('log-output');
+    const pathDisplay = document.getElementById('path-display');
+    const modal = document.getElementById('browser-modal');
+    const browseBtn = document.getElementById('browse-btn');
+    const closeBtn = document.querySelector('.close-button');
+    const modalBrowser = document.getElementById('modal-browser');
+    const modalPath = document.getElementById('modal-path');
+    const selectFolderBtn = document.getElementById('select-folder-btn');
+    let currentPathInModal = '';
+    const getWipeType = () => document.querySelector('input[name="wipe_type"]:checked').value;
+    const openModal = () => { modal.style.display = 'flex'; loadBrowser(); };
+    const closeModal = () => { modal.style.display = 'none'; };
+    browseBtn.onclick = openModal;
+    closeBtn.onclick = closeModal;
+    window.onclick = (event) => { if (event.target == modal) closeModal(); };
+    document.querySelectorAll('input[name="wipe_type"]').forEach(radio => {
+        radio.addEventListener('change', () => pathDisplay.value = '');
+    });
+    selectFolderBtn.onclick = () => {
+        pathDisplay.value = currentPathInModal;
+        closeModal();
+    };
+    async function loadBrowser(path = '') {
+        const wipeType = getWipeType();
+        modalPath.textContent = "Loading...";
+        modalBrowser.innerHTML = '';
+        let url = `/browse?type=${wipeType}`;
+        if (wipeType !== 'disk') { url += `&path=${encodeURIComponent(path)}`; }
+        const response = await fetch(url);
+        const data = await response.json();
+        if (wipeType === 'disk') {
+            selectFolderBtn.style.display = 'none';
+            modalPath.textContent = "Select a Physical Disk to Wipe";
+            const ul = document.createElement('ul');
+            data.disks.forEach(disk => {
+                const li = document.createElement('li');
+                li.innerHTML = `💾 ${disk.name}`;
+                li.onclick = () => { pathDisplay.value = disk.path; closeModal(); };
+                ul.appendChild(li);
+            });
+            modalBrowser.appendChild(ul);
+        } else {
+            selectFolderBtn.style.display = (wipeType === 'folder' && path) ? 'block' : 'none';
+            currentPathInModal = data.current_path;
+            modalPath.textContent = data.current_path || 'Select a Drive';
+            const ul = document.createElement('ul');
+            if (data.parent_path !== undefined) {
+                const li = document.createElement('li');
+                li.innerHTML = '⬆️ .. (Up)';
+                li.onclick = () => loadBrowser(data.parent_path);
+                ul.appendChild(li);
+            }
+            data.folders.forEach(folder => {
+                const li = document.createElement('li');
+                li.innerHTML = `📁 ${folder}`;
+                const newPath = data.current_path ? `${data.current_path}\\${folder}` : folder;
+                li.onclick = () => loadBrowser(newPath);
+                ul.appendChild(li);
+            });
+            if (wipeType === 'file') {
+                data.files.forEach(file => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `📄 ${file}`;
+                    li.onclick = () => { pathDisplay.value = `${data.current_path}\\${file}`; closeModal(); };
+                    ul.appendChild(li);
+                });
+            }
+            modalBrowser.appendChild(ul);
+        }
+    }
+    wipeForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const wipeType = getWipeType();
+        const path = pathDisplay.value;
+        const wipeMethod = document.getElementById('wipe-method').value;
+        if (!path) { alert('Please select a target to wipe.'); return; }
+        let confirmMessage = `Are you sure you want to permanently wipe the ${wipeType} "${path}"?`;
+        if (wipeType === 'folder') confirmMessage = `DANGER!\n\nYou are about to permanently delete the folder "${path}" and ALL its contents.\n\nThis action cannot be undone. Are you absolutely sure?`;
+        if (wipeType === 'disk') confirmMessage = `EXTREME DANGER!\n\nYou are about to wipe the ENTIRE DISK "${path}".\n\nThis will destroy ALL partitions, ALL data, and the operating system if it is the OS disk.\n\nTHIS IS IRREVERSIBLE. Are you absolutely, positively sure?`;
+        if (!confirm(confirmMessage)) return;
+        logOutput.textContent = 'Wiping in progress... Please wait.';
+        statusBar.style.display = 'block';
+        statusBar.textContent = 'Data wipe initiated... This may take a long time.';
+        statusBar.className = 'status-bar status-success';
+        try {
+            const response = await fetch('/wipe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wipe_type: wipeType, path: path, wipe_method: wipeMethod }),
+            });
+            const result = await response.json();
+            logOutput.textContent = result.log || result.stderr || "No output received.";
+            if (result.success) {
+                statusBar.textContent = 'Wipe completed successfully.';
+                statusBar.className = 'status-bar status-success';
+            } else {
+                statusBar.textContent = 'Wipe failed. Check logs.';
+                statusBar.className = 'status-bar status-error';
+            }
+        } catch (error) {
+            statusBar.textContent = 'An error occurred.';
+            statusBar.className = 'status-bar status-error';
+            logOutput.textContent = `Error: ${error}`;
+        }
+    });
+</script>
+{% endblock %}

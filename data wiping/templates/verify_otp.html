@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Verify OTP - Zero Leaks{% endblock %}
+{% block content %}
+    <h1>Two-Factor Authentication</h1>
+    <p class="text-center">
+        To complete your login, please enter the OTP.
+    </p>
+    <div class="alert alert-info">
+        <strong>For this project, the OTP was printed to the server console window.</strong>
+    </div>
+    <form method="post">
+        <div class="form-group">
+            <label for="otp">One-Time Password (OTP)</label>
+            <input type="text" name="otp" id="otp" required pattern="\d{6}" title="Enter the 6-digit OTP">
+        </div>
+        <button type="submit">Verify</button>
+    </form>
+    <p class="text-center mt-3">
+        Didn't see the OTP? <a href="{{ url_for('send_otp') }}">Resend OTP</a>
+    </p>
+{% endblock %}
