@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <process.h> // For multi-threading
+#include <ddk/ntdddisk.h>
 
 #define BUFFER_SIZE 1048576 // 1MB buffer for performance
 #define MAX_THREADS 16      // Max number of concurrent threads
