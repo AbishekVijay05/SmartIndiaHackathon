@@ -6,6 +6,7 @@ import random
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+import requests
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -122,6 +123,25 @@ def send_otp():
     otp = str(random.randint(100000, 999999))
     session['otp'] = otp
     phone_number = session.get('phone_number', 'N/A')
+    whaNum = "91"+phone_number
+    url = "https://graph.facebook.com/v22.0/753864777817921/messages"
+    headers = {
+    "Authorization": "Bearer EAALC3e2CyZBYBPb3rWXyPkr2kNvr7307NA4cNCLIQrOXji2bovgSuZBuvFBzsreOlZBeK0kZBe3QZAiv1mLlLEe6iVvZBZBRPBevxzcI8JfSNixuZAp5TfhoRalZAnI5UotMBxNdbSOVmkN4emkSOfEnTckKbhGVEh3sBuWByuZCYYjwCkm4g60UFjV7iWN6BHmHHFKSjVP6LkP593x2UCZCxZC0eZBZCTTFreLJ8m1Aee8luIvxi9SQZDZD ",
+    "Content-Type": "application/json"
+    }
+    payload = {
+    "messaging_product": "whatsapp",
+    "to": whaNum,
+    "type": "template",
+    "template": {
+      "name": "hello_world",
+      "language": { "code": "en_US" }
+    }
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    print(response.json())
+
     print("\n" + "="*50)
     print(f"      OTP FOR USER: {session.get('username')}")
     print(f"      PHONE NUMBER: {phone_number}")
