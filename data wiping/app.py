@@ -10,6 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import requests
 from fpdf import FPDF
+import qrcode
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -68,6 +69,24 @@ def generate_certificate(details):
     pdf.chapter_title('Operation Summary')
     pdf.chapter_body(cert_details)
 
+    # --- QR Code Generation & Embedding ---
+    cert_id = details.get('cert_id')
+    qr_img_path = os.path.join(CERTIFICATE_DIR, f"{cert_id}.png")
+    
+    try:
+        qr_data = f"ZeroLeaks-Cert-ID:{cert_id}"
+        img = qrcode.make(qr_data)
+        img.save(qr_img_path)
+
+        pdf.ln(5)
+        pdf.set_font('Helvetica', 'B', 12)
+        pdf.cell(0, 6, "Verification QR Code", 0, 1, 'L')
+        pdf.image(qr_img_path, x=pdf.get_x() + 5, w=40)
+        pdf.ln(45) 
+    except Exception as e:
+        print(f"Error generating QR code: {e}")
+    # --- ----------------------------- ---
+
     # --- Declaration ---
     pdf.chapter_title('Declaration')
     pdf.set_font('Helvetica', '', 10)
@@ -82,6 +101,11 @@ def generate_certificate(details):
     filename = f"{details.get('cert_id')}.pdf"
     filepath = os.path.join(CERTIFICATE_DIR, filename)
     pdf.output(filepath)
+    
+    # --- Clean up temporary QR image ---
+    if os.path.exists(qr_img_path):
+        os.remove(qr_img_path)
+        
     return filename
 
 # --- Helper Functions ---
@@ -223,6 +247,18 @@ def logout():
 def wipe_tool():
     return render_template('wipe_tool.html')
 
+@app.route('/history')
+@login_required
+@otp_verified_required
+def history():
+    user_id = session['user_id']
+    conn = get_db_connection()
+    certs = conn.execute(
+        'SELECT * FROM certificates WHERE user_id = ? ORDER BY timestamp DESC', (user_id,)
+    ).fetchall()
+    conn.close()
+    return render_template('history.html', certificates=certs)
+
 @app.route('/browse')
 @login_required
 @otp_verified_required
@@ -257,10 +293,9 @@ def wipe_file_route():
     wipe_type = data.get('wipe_type')
     path = data.get('path')
     wipe_method = data.get('wipe_method')
-    #wipe_method_name = data.get('wipe_method_name') # Get the full name from frontend
-    
-    if not all([wipe_type, path, wipe_method]):
-        #print(wipe_type, path, wipe_method, wipe_method_name)
+    wipe_method_name = wipe_method+" wipe" # Get the full name from frontend
+
+    if not all([wipe_type, path, wipe_method, wipe_method_name]):
         return jsonify({'stderr': 'ERROR: Missing parameters.'}), 400
 
     if not os.path.exists(C_EXECUTABLE_PATH):
@@ -276,15 +311,27 @@ def wipe_file_route():
 
         if success:
             cert_id = str(uuid.uuid4())
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
             cert_details = {
                 'cert_id': cert_id,
-                'timestamp': datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                'timestamp': timestamp,
                 'wipe_type': wipe_type,
                 'path': path,
+                'wipe_method_name': wipe_method_name,
                 'username': session.get('username', 'N/A')
             }
             cert_filename = generate_certificate(cert_details)
             response_data['certificate_url'] = url_for('download_certificate', filename=cert_filename)
+
+            # --- Save certificate record to database ---
+            conn = get_db_connection()
+            conn.execute(
+                'INSERT INTO certificates (user_id, certificate_uuid, timestamp, target_type, target_path, sanitization_standard) VALUES (?, ?, ?, ?, ?, ?)',
+                (session['user_id'], cert_id, timestamp, wipe_type, path, wipe_method_name)
+            )
+            conn.commit()
+            conn.close()
+            # ---------------------------------------------
 
         return jsonify(response_data)
         
@@ -295,6 +342,11 @@ def wipe_file_route():
 @login_required
 @otp_verified_required
 def download_certificate(filename):
+    # Security check: ensure filename is a UUID to prevent path traversal
+    try:
+        uuid.UUID(os.path.splitext(filename)[0])
+    except ValueError:
+        return "Invalid filename", 400
     return send_from_directory(CERTIFICATE_DIR, filename, as_attachment=True)
 
 
@@ -306,3 +358,4 @@ if __name__ == '__main__':
         print("Starting Zero Leaks server...")
         print("Access the tool at http://127.0.0.1:5000")
         app.run(host='0.0.0.0', port=5000, debug=False)
+
