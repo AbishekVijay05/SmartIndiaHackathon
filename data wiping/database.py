@@ -8,9 +8,11 @@ cursor = conn.cursor()
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
+        username TEXT  NOT NULL,
         password_hash TEXT NOT NULL,
-        phone_number TEXT NOT NULL
+        phone_number TEXT UNIQUE NOT NULL,
+        certificate_id INT NOT NULL UNIQUE
+            
     )
 ''')
 

@@ -3,15 +3,86 @@ import subprocess
 import string
 import sqlite3
 import random
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
+import uuid
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import requests
+from fpdf import FPDF
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
+# --- Configuration ---
 C_EXECUTABLE_PATH = os.path.join('wipingEngine', 'wipeEngine.exe')
+CERTIFICATE_DIR = os.path.join(app.root_path, 'certificates')
+if not os.path.exists(CERTIFICATE_DIR):
+    os.makedirs(CERTIFICATE_DIR)
+
+# --- PDF Certificate Generation ---
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Helvetica', 'B', 18)
+        self.cell(0, 10, 'Certificate of Data Sanitization', 0, 1, 'C')
+        self.set_font('Helvetica', '', 10)
+        self.set_text_color(128)
+        self.cell(0, 6, 'Issued by ZeroLeaks Secure Wipe Tool', 0, 1, 'C')
+        self.ln(10)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Helvetica', 'I', 8)
+        self.set_text_color(128)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+    def chapter_title(self, title):
+        self.set_font('Helvetica', 'B', 12)
+        self.set_fill_color(230, 230, 230)
+        self.cell(0, 6, title, 0, 1, 'L', 1)
+        self.ln(4)
+
+    def chapter_body(self, data):
+        self.set_font('Helvetica', '', 11)
+        for key, value in data.items():
+            self.set_font('Helvetica', 'B')
+            self.cell(50, 6, f'{key}:')
+            self.set_font('Helvetica', '')
+            self.multi_cell(0, 6, str(value))
+        self.ln()
+
+def generate_certificate(details):
+    pdf = PDF()
+    pdf.add_page()
+    
+    # --- Certificate Details ---
+    cert_details = {
+        "Certificate ID": details.get('cert_id'),
+        "Timestamp (UTC)": details.get('timestamp'),
+        "Target Type": details.get('wipe_type').capitalize(),
+        "Target Path": details.get('path'),
+        "Sanitization Standard": details.get('wipe_method_name'),
+        "Status": "Completed Successfully",
+        "Verified By": details.get('username')
+    }
+    pdf.chapter_title('Operation Summary')
+    pdf.chapter_body(cert_details)
+
+    # --- Declaration ---
+    pdf.chapter_title('Declaration')
+    pdf.set_font('Helvetica', '', 10)
+    declaration_text = (
+        "This document certifies that the digital data previously stored on the target specified above "
+        "has been sanitized in accordance with the selected standard. The process overwrites the data to ensure "
+        "that recovery of the original information is infeasible using standard laboratory techniques."
+    )
+    pdf.multi_cell(0, 5, declaration_text)
+    
+    # --- Save the PDF ---
+    filename = f"{details.get('cert_id')}.pdf"
+    filepath = os.path.join(CERTIFICATE_DIR, filename)
+    pdf.output(filepath)
+    return filename
 
 # --- Helper Functions ---
 def get_db_connection():
@@ -27,14 +98,18 @@ def get_physical_disks():
         lines = result.stdout.strip().split('\n')
         for line in lines[2:]:
             if line:
-                _, caption, index, serial, size_str = line.strip().split(',')
-                size_gb = float(size_str) / (1024**3)
-                disk_path = f"\\\\.\\PhysicalDrive{index}"
-                display_name = f"Disk {index}: {caption.strip()} (SN: {serial.strip()}) ({size_gb:.2f} GB)"
-                disks.append({'path': disk_path, 'name': display_name, 'serial': serial.strip()})
+                try:
+                    _, caption, index, serial, size_str = line.strip().split(',')
+                    size_gb = float(size_str) / (1024**3)
+                    disk_path = f"\\\\.\\PhysicalDrive{index}"
+                    display_name = f"Disk {index}: {caption.strip()} (SN: {serial.strip()}) ({size_gb:.2f} GB)"
+                    disks.append({'path': disk_path, 'name': display_name, 'serial': serial.strip()})
+                except ValueError:
+                    continue # Skip lines that don't parse correctly
     except Exception as e:
         print(f"Could not get physical disks: {e}")
     return disks
+
 
 # --- Decorators for Route Protection ---
 def login_required(f):
@@ -115,7 +190,9 @@ def verify_otp():
             return redirect(url_for('wipe_tool'))
         else:
             flash("Invalid OTP. Please try again.", "danger")
+    # If it's a GET request, we should try sending an OTP
     return render_template('verify_otp.html')
+
 
 @app.route('/send-otp')
 @login_required
@@ -123,26 +200,8 @@ def send_otp():
     otp = str(random.randint(100000, 999999))
     session['otp'] = otp
     phone_number = session.get('phone_number', 'N/A')
-    whaNum = "+91"+phone_number
-    url = "https://graph.facebook.com/v22.0/753864777817921/messages"
-    headers = {
-    "Authorization": "Bearer EAALC3e2CyZBYBPQJGm7MjvXa8iBg2CpUV68dYVX6bqB0rCXKa1w5Ceq6VMyMttn7kv0Bqyv2jFhHJWVhnR2iccCpcjo2edeZB2bjPrHxMpkH4n5wS1Lt91ZBcD4lZB6nKEZAilqXySpKDtS4kmkydtPyM5IbyZBYDjaSTuc1y8PyGmQMgzb8jh22eW0mZCpLJ26RhcRNuKm6w80u0i0IJBNMsD7Q0LZALrCKN8ZAB5Y5ZByuLsggZDZD",
-    "Content-Type": "application/json"
-}
-    payload = {
-    "messaging_product": "whatsapp",
-    "to": "918015806129",
-    "type": "template",
-    "template": {
-        "name": "hello_world",
-        "language": { "code": "en_US" }
-    }
-
-    }
-
-    response = requests.post(url, headers=headers, json=payload)
-    print(response.json())
-
+    
+    # This block is for printing to console as a fallback
     print("\n" + "="*50)
     print(f"      OTP FOR USER: {session.get('username')}")
     print(f"      PHONE NUMBER: {phone_number}")
@@ -198,17 +257,46 @@ def wipe_file_route():
     wipe_type = data.get('wipe_type')
     path = data.get('path')
     wipe_method = data.get('wipe_method')
+    #wipe_method_name = data.get('wipe_method_name') # Get the full name from frontend
+    
     if not all([wipe_type, path, wipe_method]):
+        #print(wipe_type, path, wipe_method, wipe_method_name)
         return jsonify({'stderr': 'ERROR: Missing parameters.'}), 400
+
     if not os.path.exists(C_EXECUTABLE_PATH):
         return jsonify({'stderr': f"ERROR: Executable not found. Please compile the C code."}), 500
+    
     try:
         command = [C_EXECUTABLE_PATH, f'--{wipe_type}', path, wipe_method]
         process = subprocess.run(command, capture_output=True, text=True, check=False)
         log_output = process.stdout + process.stderr
-        return jsonify({'log': log_output, 'success': process.returncode == 0})
+        success = process.returncode == 0
+        
+        response_data = {'log': log_output, 'success': success}
+
+        if success:
+            cert_id = str(uuid.uuid4())
+            cert_details = {
+                'cert_id': cert_id,
+                'timestamp': datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+                'wipe_type': wipe_type,
+                'path': path,
+                'username': session.get('username', 'N/A')
+            }
+            cert_filename = generate_certificate(cert_details)
+            response_data['certificate_url'] = url_for('download_certificate', filename=cert_filename)
+
+        return jsonify(response_data)
+        
     except Exception as e:
         return jsonify({'stderr': f"An unexpected error occurred: {str(e)}"}), 500
+
+@app.route('/download_certificate/<path:filename>')
+@login_required
+@otp_verified_required
+def download_certificate(filename):
+    return send_from_directory(CERTIFICATE_DIR, filename, as_attachment=True)
+
 
 if __name__ == '__main__':
     if not os.path.exists('users.db'):
