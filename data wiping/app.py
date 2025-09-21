@@ -123,20 +123,21 @@ def send_otp():
     otp = str(random.randint(100000, 999999))
     session['otp'] = otp
     phone_number = session.get('phone_number', 'N/A')
-    whaNum = "91"+phone_number
+    whaNum = "+91"+phone_number
     url = "https://graph.facebook.com/v22.0/753864777817921/messages"
     headers = {
-    "Authorization": "Bearer EAALC3e2CyZBYBPb3rWXyPkr2kNvr7307NA4cNCLIQrOXji2bovgSuZBuvFBzsreOlZBeK0kZBe3QZAiv1mLlLEe6iVvZBZBRPBevxzcI8JfSNixuZAp5TfhoRalZAnI5UotMBxNdbSOVmkN4emkSOfEnTckKbhGVEh3sBuWByuZCYYjwCkm4g60UFjV7iWN6BHmHHFKSjVP6LkP593x2UCZCxZC0eZBZCTTFreLJ8m1Aee8luIvxi9SQZDZD ",
+    "Authorization": "Bearer EAALC3e2CyZBYBPQJGm7MjvXa8iBg2CpUV68dYVX6bqB0rCXKa1w5Ceq6VMyMttn7kv0Bqyv2jFhHJWVhnR2iccCpcjo2edeZB2bjPrHxMpkH4n5wS1Lt91ZBcD4lZB6nKEZAilqXySpKDtS4kmkydtPyM5IbyZBYDjaSTuc1y8PyGmQMgzb8jh22eW0mZCpLJ26RhcRNuKm6w80u0i0IJBNMsD7Q0LZALrCKN8ZAB5Y5ZByuLsggZDZD",
     "Content-Type": "application/json"
-    }
+}
     payload = {
     "messaging_product": "whatsapp",
-    "to": whaNum,
+    "to": "918015806129",
     "type": "template",
     "template": {
-      "name": "hello_world",
-      "language": { "code": "en_US" }
+        "name": "hello_world",
+        "language": { "code": "en_US" }
     }
+
     }
 
     response = requests.post(url, headers=headers, json=payload)
