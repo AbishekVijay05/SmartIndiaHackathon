@@ -1,0 +1,107 @@
+/* ===== Landing Page Styles ===== */
+
+/* Hero Section */
+.landing-hero {
+  text-align: center;
+  padding: 100px 20px 60px;
+  color: white;
+  animation: fadeIn 1s ease;
+}
+
+.landing-hero h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.landing-hero h2 {
+  font-size: 1.8rem;
+  color: #ffd24d;
+  margin-bottom: 20px;
+}
+
+.landing-hero p {
+  max-width: 640px;
+  margin: 0 auto 30px;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.landing-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.landing-buttons a {
+  padding: 12px 26px;
+  border-radius: 10px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.landing-buttons a.primary {
+  background: linear-gradient(90deg, #007bff, #0056b3);
+  color: #fff;
+}
+
+.landing-buttons a.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+}
+
+.landing-buttons a.secondary {
+  background: #fff;
+  color: #0056b3;
+}
+
+.landing-buttons a.secondary:hover {
+  background: #f1f1f1;
+  transform: translateY(-2px);
+}
+
+/* Features Section */
+.landing-features {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 28px;
+  padding: 60px 20px;
+}
+
+.landing-feature {
+  background: white;
+  color: #212529;
+  padding: 28px 20px;
+  border-radius: 14px;
+  width: 280px;
+  text-align: center;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.1);
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+}
+
+.landing-feature:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.15);
+}
+
+.landing-feature h3 {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  color: #0056b3;
+}
+
+.landing-feature p {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #6c757d;
+}
+
+/* Fade-in Animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}

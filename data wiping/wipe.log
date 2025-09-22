@@ -1,0 +1,15 @@
+Wiping File: X:\icube3.0-main\.gitignore
+File size: 10 bytes.
+Pass 1 of 3: Writing pattern 0x00...
+
+Progress: 100.00%
+Progress: 100.00%
+Pass 2 of 3: Writing pattern 0xFF...
+
+Progress: 100.00%
+Progress: 100.00%
+Pass 3 of 3: Writing random data...
+
+Progress: 100.00%
+Progress: 100.00%
+SUCCESS: File securely wiped.

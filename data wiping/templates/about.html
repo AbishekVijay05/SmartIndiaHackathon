@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}About - Zero Leaks{% endblock %}
+
+{% block content %}
+<!-- Page-specific styles (scoped to this page) -->
+<style>
+/* Bypass base .container for only this page */
+.container {
+  max-width: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Page layout wrapper */
+.page-about { width:100%; padding: 40px 20px 80px; }
+
+/* main grid */
+.about-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 320px 1fr 360px; /* left | center | right */
+  gap: 32px;
+  align-items: start;
+}
+
+/* LEFT: sticky about card */
+.about-aside {
+  position: sticky;
+  top: 110px;
+  padding: 32px;
+  border-radius: 16px;
+  min-height: 360px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+  background: linear-gradient(180deg, #00c3ff 0%, #0066ff 55%, #001133 100%);
+}
+.about-aside h2 { font-size: 28px; margin: 0 0 12px; line-height: 1.05; }
+.about-aside .muted { color: rgba(255,255,255,0.95); margin-bottom: 18px; font-size: 1rem; line-height: 1.5; }
+
+/* CTA button inside left card */
+.about-aside .btn-primary {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #fff;
+  color: #0066ff;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 8px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+}
+
+/* CENTER: features */
+.about-features {
+  background: #fff;
+  border-radius: 16px;
+  padding: 36px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+.section-title { font-size: 22px; text-align: center; margin-bottom: 18px; color: #0f172a; }
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+.feature-card {
+  padding: 22px;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(2,6,23,0.06);
+  transition: transform .28s ease, box-shadow .28s ease;
+}
+.feature-card:hover { transform: translateY(-8px); box-shadow: 0 16px 40px rgba(2,6,23,0.10); }
+.feature-card .icon { font-size: 1.8rem; margin-bottom: 12px; }
+.feature-card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.feature-card p { color: #6b7280; font-size: 0.95rem; line-height: 1.6; }
+
+/* RIGHT: FAQ */
+.about-faq {
+  background: #fff;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+}
+.about-faq .section-title { text-align: left; margin-bottom: 14px; }
+.accordion-item { margin-bottom: 12px; border-radius: 10px; overflow: hidden; background: #fff; border: 1px solid rgba(0,0,0,0.06); }
+.accordion-header {
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 600;
+  background: #fbfbfd;
+  border: none;
+  cursor: pointer;
+}
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 16px;
+  transition: max-height .35s ease, padding .35s ease;
+  color: #374151;
+}
+.accordion-item.active .accordion-content { max-height: 300px; padding: 12px 16px 18px; }
+
+/* FOOTER - ensure not fixed/covering */
+footer { position: relative !important; }
+
+/* Responsive adjustments */
+@media (max-width: 1100px) {
+  .about-wrapper { grid-template-columns: 1fr; padding: 0 12px; }
+  .about-aside { position: relative; min-height: auto; order: -1; padding: 20px; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .about-faq { padding: 18px; }
+}
+
+/* Small screens tweak */
+@media (max-width: 480px) {
+  .about-aside h2 { font-size: 22px; }
+  .section-title { font-size: 18px; }
+  .feature-card { padding: 16px; }
+}
+</style>
+
+<div class="page-about">
+  <div class="about-wrapper">
+    <!-- LEFT -->
+    <aside class="about-aside">
+      <h2>About <span style="color: #ffd24d">Zero Leaks</span></h2>
+      <p class="muted">Secure data wiping using industry-standard methods. Protect privacy and produce auditable certificates.</p>
+      <a class="btn-primary" href="{{ url_for('signup') }}">🚀 Get Started</a>
+    </aside>
+
+    <!-- CENTER -->
+    <section class="about-features">
+      <h3 class="section-title">Why Choose Us?</h3>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">🗑</div>
+          <h3>Permanent Erasure</h3>
+          <p>Files overwritten multiple times so recovery is not possible with standard tools.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">⚡</div>
+          <h3>Fast & Reliable</h3>
+          <p>Pick quick or multi-pass wipes to balance speed and security.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">🔒</div>
+          <h3>Privacy First</h3>
+          <p>No telemetry, transparent operations, and server-side validations.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">📄</div>
+          <h3>Wipe Certificates</h3>
+          <p>Produce JSON/PDF certificates after successful wipes for audit trails.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="about-faq">
+      <h3 class="section-title">Commonly Asked Questions</h3>
+
+      <div class="accordion">
+        <div class="accordion-item">
+          <button class="accordion-header">How is Zero Leaks different?</button>
+          <div class="accordion-content"><p>We overwrite data using configured passes and produce certificates for proof of deletion.</p></div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-header">Is it safe to use?</button>
+          <div class="accordion-content"><p>Yes — targets are validated and the UI warns heavily before destructive actions. Avoid wiping system disks unintentionally.</p></div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-header">Which methods are available?</button>
+          <div class="accordion-content"><p>Clear (1-pass), Purge (3-pass), Destroy (7-pass).</p></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const items = document.querySelectorAll('.accordion-item');
+  items.forEach(item => {
+    const btn = item.querySelector('.accordion-header');
+    const panel = item.querySelector('.accordion-content');
+    btn.addEventListener('click', () => {
+      const open = item.classList.contains('active');
+      items.forEach(i => {
+        i.classList.remove('active');
+        i.querySelector('.accordion-content').style.maxHeight = null;
+      });
+      if (!open) {
+        item.classList.add('active');
+        panel.style.maxHeight = panel.scrollHeight + 'px';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

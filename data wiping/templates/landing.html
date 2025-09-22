@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRABEX - Secure Data Wiping</title>
+  <!-- Global + Landing CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='landing.css') }}">
+</head>
+<body>
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="logo-section">
+      <img src="{{ url_for('static', filename='crabEX.jpg') }}" alt="Zero Leaks Logo" class="logo">
+      <a href="{{ url_for('home') }}" class="brand">CRABEX</a>
+    </div>
+    <nav>
+      <a href="{{ url_for('home') }}">Home</a>
+      <a href="{{ url_for('about') }}">About</a>
+      <a href="{{ url_for('login') }}">Login</a>
+      <a href="{{ url_for('signup') }}">Signup</a>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="landing-hero">
+    <h1>CRABEX</h1>
+    <h2>Data Wiping Tool</h2>
+    <p>
+      Secure data wiping using industry-standard methods. Protect privacy and
+      generate verifiable certificates for complete data destruction.
+    </p>
+    <div class="landing-buttons">
+      <a href="{{ url_for('signup') }}" class="primary">Get Started</a>
+      <a href="{{ url_for('about') }}" class="secondary">Learn More</a>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="landing-features">
+    <div class="landing-feature">
+      <h3>🗑 Permanent Erasure</h3>
+      <p>Files overwritten multiple times so recovery is not possible.</p>
+    </div>
+    <div class="landing-feature">
+      <h3>⚡ Fast & Reliable</h3>
+      <p>Choose between quick wipes or multi-pass secure deletion.</p>
+    </div>
+    <div class="landing-feature">
+      <h3>🔒 Privacy First</h3>
+      <p>No telemetry, full transparency, and secure server-side verification.</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; {{ current_year }} CRABEX. All rights reserved.</p>
+  </footer>
+</body>
+</html>
