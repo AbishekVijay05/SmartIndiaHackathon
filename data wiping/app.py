@@ -3,13 +3,29 @@ import subprocess
 import string
 import sqlite3
 import random
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import requests
+from generate_certificate import generate_certificate
+from twilio.rest import Client
+from twilio.base.exceptions import TwilioRestException
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+
+# --- Twilio Configuration ---
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+
+if all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER]):
+    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+else:
+    print("\n--- TWILIO WARNING ---")
+    print("Twilio environment variables not set. OTP via SMS will be disabled.")
+    print("OTP will be printed to the console as a fallback.")
+    print("----------------------\n")
+    twilio_client = None
 
 C_EXECUTABLE_PATH = os.path.join('wipingEngine', 'wipeEngine.exe')
 
@@ -36,22 +52,13 @@ def get_physical_disks():
         print(f"Could not get physical disks: {e}")
     return disks
 
-# --- Decorators for Route Protection ---
+# --- Decorators ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             flash("You must be logged in to view this page.", "warning")
             return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-def otp_verified_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('otp_verified'):
-            flash("Please verify your identity with an OTP.", "warning")
-            return redirect(url_for('verify_otp'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -71,13 +78,15 @@ def login():
         user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         conn.close()
         if user and check_password_hash(user['password_hash'], password):
+            if session.get('pending_user') == username:
+                flash("Please verify your account with OTP before login.", "warning")
+                return redirect(url_for('send_otp'))
             session.clear()
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['phone_number'] = user['phone_number']
-            session['otp_verified'] = False
             flash(f"Welcome back, {user['username']}!", "success")
-            return redirect(url_for('verify_otp'))
+            return redirect(url_for('wipe_tool'))
         else:
             flash("Invalid username or password.", "danger")
     return render_template('login.html')
@@ -96,60 +105,59 @@ def signup():
             return redirect(url_for('signup'))
         password_hash = generate_password_hash(password)
         conn.execute('INSERT INTO users (username, password_hash, phone_number) VALUES (?, ?, ?)',
-                     (username, password_hash, phone_number))
+                    (username, password_hash, phone_number))
         conn.commit()
         conn.close()
-        flash("Account created successfully! Please log in.", "success")
-        return redirect(url_for('login'))
+        session['pending_user'] = username
+        session['phone_number'] = phone_number
+        flash("Account created successfully! Please verify with OTP.", "success")
+        return redirect(url_for('send_otp'))
     return render_template('signup.html')
 
+@app.route('/send-otp')
+def send_otp():
+    username = session.get('pending_user')
+    if not username:
+        flash("OTP not required. Please login.", "info")
+        return redirect(url_for('login'))
+
+    otp = str(random.randint(100000, 999999))
+    session['otp'] = otp
+    phone_number = session.get('phone_number')
+
+    print(f"\n====== OTP FOR {username} IS: {otp} ======\n")
+
+    if twilio_client:
+        try:
+            twilio_client.messages.create(
+                body=f"Your Zero Leaks verification code is: {otp}",
+                from_=TWILIO_PHONE_NUMBER,
+                to=phone_number
+            )
+            flash(f"An OTP has been sent to your phone number.", "success")
+        except TwilioRestException as e:
+            print(f"!!! TWILIO ERROR: {e} !!!")
+            flash("Failed to send OTP via SMS. The number may be invalid or not verified.", "danger")
+            flash("Please check the server console for the code.", "warning")
+    else:
+        flash("Twilio is not configured. Please check the server console for the OTP.", "warning")
+
+    return redirect(url_for('verify_otp'))
+
 @app.route('/verify-otp', methods=['GET', 'POST'])
-@login_required
 def verify_otp():
     if request.method == 'POST':
         user_otp = request.form['otp']
         if 'otp' in session and session['otp'] == user_otp:
-            session['otp_verified'] = True
-            session.pop('otp', None)
-            flash("Verification successful! Access granted.", "success")
-            return redirect(url_for('wipe_tool'))
+            username = session.get('pending_user')
+            if username:
+                session.pop('pending_user', None)
+                session.pop('otp', None)
+                flash("OTP verified successfully! Please login.", "success")
+                return redirect(url_for('login'))
         else:
             flash("Invalid OTP. Please try again.", "danger")
     return render_template('verify_otp.html')
-
-@app.route('/send-otp')
-@login_required
-def send_otp():
-    otp = str(random.randint(100000, 999999))
-    session['otp'] = otp
-    phone_number = session.get('phone_number', 'N/A')
-    whaNum = "+91"+phone_number
-    url = "https://graph.facebook.com/v22.0/753864777817921/messages"
-    headers = {
-    "Authorization": "Bearer EAALC3e2CyZBYBPQJGm7MjvXa8iBg2CpUV68dYVX6bqB0rCXKa1w5Ceq6VMyMttn7kv0Bqyv2jFhHJWVhnR2iccCpcjo2edeZB2bjPrHxMpkH4n5wS1Lt91ZBcD4lZB6nKEZAilqXySpKDtS4kmkydtPyM5IbyZBYDjaSTuc1y8PyGmQMgzb8jh22eW0mZCpLJ26RhcRNuKm6w80u0i0IJBNMsD7Q0LZALrCKN8ZAB5Y5ZByuLsggZDZD",
-    "Content-Type": "application/json"
-}
-    payload = {
-    "messaging_product": "whatsapp",
-    "to": "918015806129",
-    "type": "template",
-    "template": {
-        "name": "hello_world",
-        "language": { "code": "en_US" }
-    }
-
-    }
-
-    response = requests.post(url, headers=headers, json=payload)
-    print(response.json())
-
-    print("\n" + "="*50)
-    print(f"      OTP FOR USER: {session.get('username')}")
-    print(f"      PHONE NUMBER: {phone_number}")
-    print(f"      YOUR OTP IS: {otp}")
-    print("="*50 + "\n")
-    flash(f"An OTP has been sent to the console.", "info")
-    return redirect(url_for('verify_otp'))
 
 @app.route('/logout')
 def logout():
@@ -157,16 +165,14 @@ def logout():
     flash("You have been logged out.", "success")
     return redirect(url_for('login'))
 
-# --- Main Application Routes ---
+# --- Wiping Routes ---
 @app.route('/wipe-tool')
 @login_required
-@otp_verified_required
 def wipe_tool():
     return render_template('wipe_tool.html')
 
 @app.route('/browse')
 @login_required
-@otp_verified_required
 def browse_fs():
     wipe_type = request.args.get('type', 'file')
     if wipe_type == 'disk':
@@ -192,7 +198,6 @@ def browse_fs():
 
 @app.route('/wipe', methods=['POST'])
 @login_required
-@otp_verified_required
 def wipe_file_route():
     data = request.get_json()
     wipe_type = data.get('wipe_type')
@@ -200,21 +205,40 @@ def wipe_file_route():
     wipe_method = data.get('wipe_method')
     if not all([wipe_type, path, wipe_method]):
         return jsonify({'stderr': 'ERROR: Missing parameters.'}), 400
-    if not os.path.exists(C_EXECUTABLE_PATH):
-        return jsonify({'stderr': f"ERROR: Executable not found. Please compile the C code."}), 500
-    try:
-        command = [C_EXECUTABLE_PATH, f'--{wipe_type}', path, wipe_method]
-        process = subprocess.run(command, capture_output=True, text=True, check=False)
-        log_output = process.stdout + process.stderr
-        return jsonify({'log': log_output, 'success': process.returncode == 0})
-    except Exception as e:
-        return jsonify({'stderr': f"An unexpected error occurred: {str(e)}"}), 500
 
-if __name__ == '__main__':
-    if not os.path.exists('users.db'):
-        print("ERROR: Database 'users.db' not found!")
-        print("Please run 'python database.py' once to create it.")
+    if not os.path.exists(C_EXECUTABLE_PATH):
+        return jsonify({'stderr': "Executable not found."}), 500
+
+    command = [C_EXECUTABLE_PATH, f'--{wipe_type}', path, wipe_method]
+    process = subprocess.run(command, capture_output=True, text=True)
+    log_output = process.stdout + process.stderr
+
+    if process.returncode != 0:
+        return jsonify({'stderr': log_output, 'success': False}), 500
+
+    try:
+        cert_json, cert_pdf = generate_certificate("wipe.log", path)
+    except Exception as e:
+        return jsonify({'stderr': f"Certificate generation failed: {str(e)}"}), 500
+
+    return jsonify({
+        'log': log_output,
+        'success': True,
+        'certificate_json': cert_json,
+        'certificate_pdf': cert_pdf
+    })
+
+@app.route('/download/<filename>')
+@login_required
+def download_file(filename):
+    if os.path.exists(filename):
+        return send_file(filename, as_attachment=True)
+    flash("File not found!", "danger")
+    return redirect(url_for('wipe_tool'))
+
+# --- Main ---
+if __name__ == "__main__":
+    if not os.path.exists("users.db"):
+        print("Database not found! Run 'database.py' first.")
     else:
-        print("Starting Zero Leaks server...")
-        print("Access the tool at http://127.0.0.1:5000")
-        app.run(host='0.0.0.0', port=5000, debug=False)
+        app.run(host="0.0.0.0", port=5000, debug=False)
