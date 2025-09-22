@@ -3,15 +3,30 @@ import subprocess
 import string
 import sqlite3
 import random
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
+import sys
+import json
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash, send_file
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from generate_certificate import generate_certificate
 import requests
+url = "https://graph.facebook.com/v22.0/753864777817921/messages"
+headers = {
+    "Authorization": "Bearer EAALC3e2CyZBYBPm72hVzBxWyBrao0pEkp3Gi6rhPLIWLis5qiOln1rGIaUBeWG3ZCMp2vQ5eeGNyLPUyX2vghunlGWO8X4LdelLuSxexvw5lpPjtxlU59UB1z9QsyKXyH9cUTjYD8GVPcJKfaz9uHPcqCX3ilOqHacLpVqCZAY34odSnJPbXx5sEotZCyO5rlwPscvMwBoqoT7rG7aIib5orwXGMfR1r6nScfDZAvgTuHmKgZD",
+    "Content-Type": "application/json"
+}
+
+
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-C_EXECUTABLE_PATH = os.path.join('wipingEngine', 'wipeEngine.exe')
+# --- Cross-Platform Executable Path ---
+if sys.platform == "win32":
+    executable_name = "wipeEngine.exe"
+else:
+    executable_name = "wipeEngine"
+C_EXECUTABLE_PATH = os.path.join('wipingEngine', executable_name)
 
 # --- Helper Functions ---
 def get_db_connection():
@@ -22,21 +37,34 @@ def get_db_connection():
 def get_physical_disks():
     disks = []
     try:
-        cmd = "wmic diskdrive get Index,Caption,Size,SerialNumber /format:csv"
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
-        lines = result.stdout.strip().split('\n')
-        for line in lines[2:]:
-            if line:
-                _, caption, index, serial, size_str = line.strip().split(',')
-                size_gb = float(size_str) / (1024**3)
-                disk_path = f"\\\\.\\PhysicalDrive{index}"
-                display_name = f"Disk {index}: {caption.strip()} (SN: {serial.strip()}) ({size_gb:.2f} GB)"
-                disks.append({'path': disk_path, 'name': display_name, 'serial': serial.strip()})
+        if sys.platform == "win32":
+            cmd = "wmic diskdrive get Index,Caption,Size,SerialNumber /format:csv"
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            lines = result.stdout.strip().split('\n')
+            for line in lines[2:]:
+                if line:
+                    _, caption, index, serial, size_str = line.strip().split(',')
+                    size_gb = float(size_str) / (1024**3)
+                    disk_path = f"\\\\.\\PhysicalDrive{index}"
+                    display_name = f"Disk {index}: {caption.strip()} (SN: {serial.strip()}) ({size_gb:.2f} GB)"
+                    disks.append({'path': disk_path, 'name': display_name, 'serial': serial.strip()})
+        else:
+            # On Linux, this may need to be run with sudo to get all details
+            cmd = ["lsblk", "-d", "-o", "NAME,MODEL,SIZE,SERIAL", "--bytes", "--json"]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            data = json.loads(result.stdout)
+            for disk in data.get('blockdevices', []):
+                disk_path = os.path.join('/dev', disk.get('name', ''))
+                model = disk.get('model', 'N/A')
+                size_gb = float(disk.get('size', 0)) / (1024**3)
+                serial = disk.get('serial', 'N/A')
+                display_name = f"{disk_path}: {model} (SN: {serial}) ({size_gb:.2f} GB)"
+                disks.append({'path': disk_path, 'name': display_name, 'serial': serial})
     except Exception as e:
-        print(f"Could not get physical disks: {e}")
+        print(f"Could not get physical disks (do you need to run as admin/sudo?): {e}")
     return disks
 
-# --- Decorators for Route Protection ---
+# --- Decorators & Authentication ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -46,16 +74,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def otp_verified_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('otp_verified'):
-            flash("Please verify your identity with an OTP.", "warning")
-            return redirect(url_for('verify_otp'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-# --- Authentication Routes ---
 @app.route('/')
 def home():
     if 'user_id' in session:
@@ -71,23 +89,32 @@ def login():
         user = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         conn.close()
         if user and check_password_hash(user['password_hash'], password):
+            if session.get('pending_user') == username:
+                flash("Please verify your account with OTP before login.", "warning")
+                return redirect(url_for('send_otp'))
             session.clear()
             session['user_id'] = user['id']
             session['username'] = user['username']
             session['phone_number'] = user['phone_number']
-            session['otp_verified'] = False
+            
             flash(f"Welcome back, {user['username']}!", "success")
-            return redirect(url_for('verify_otp'))
+            return redirect(url_for('wipe_tool'))
         else:
             flash("Invalid username or password.", "danger")
     return render_template('login.html')
 
+whanum = "91" 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         phone_number = request.form['phone_number']
+        #print(type(phone_number))
+        global whanum
+        whanum += phone_number
+        print(whanum)
+        print(type(whanum))
         conn = get_db_connection()
         user_exists = conn.execute('SELECT id FROM users WHERE username = ?', (username,)).fetchone()
         if user_exists:
@@ -99,100 +126,115 @@ def signup():
                      (username, password_hash, phone_number))
         conn.commit()
         conn.close()
-        flash("Account created successfully! Please log in.", "success")
-        return redirect(url_for('login'))
+        session['pending_user'] = username
+        session['phone_number'] = phone_number
+        flash("Account created successfully! Please verify with OTP.", "success")
+        return redirect(url_for('send_otp'))
     return render_template('signup.html')
 
+@app.route('/send-otp')
+def send_otp():
+    username = session.get('pending_user')
+    
+    if not username:
+        flash("OTP not required. Please login.", "info")
+        return redirect(url_for('login'))
+    otp = str(random.randint(100000, 999999))
+    session['otp'] = otp
+    otp = str(otp)
+    
+    payload = {
+    "messaging_product": "whatsapp",
+    "to": whanum,
+    "type": "template",
+    "template": {
+        "name": "otp_verification",
+        "language": { "code": "en" },
+                "components": [
+                {
+                "type": "body",
+                "parameters": [
+                    {
+                        "type": "text",
+                        "text": otp
+                    }
+                ]
+            },
+            {
+                "type": "button",
+                "sub_type": "url",  # ✅ for “Copy code” style buttons
+                "index": 0,
+                "parameters": [
+                    {
+                        "type": "payload",
+                        "payload": "copy_code"  # can be any identifier for your app logic
+                    }
+                ]
+            }
+        ]
+
+                }
+    }
+    print(f"\n====== OTP FOR {username} IS: {otp} ======\n")
+    response = requests.post(url, headers=headers, json=payload)
+    flash("OTP sent to console! Please verify.", "info")
+    return redirect(url_for('verify_otp'))
+
 @app.route('/verify-otp', methods=['GET', 'POST'])
-@login_required
 def verify_otp():
     if request.method == 'POST':
         user_otp = request.form['otp']
         if 'otp' in session and session['otp'] == user_otp:
-            session['otp_verified'] = True
-            session.pop('otp', None)
-            flash("Verification successful! Access granted.", "success")
-            return redirect(url_for('wipe_tool'))
+            username = session.get('pending_user')
+            if username:
+                session.pop('pending_user', None)
+                session.pop('otp', None)
+                flash("OTP verified successfully! Please login.", "success")
+                return redirect(url_for('login'))
         else:
             flash("Invalid OTP. Please try again.", "danger")
     return render_template('verify_otp.html')
 
-@app.route('/send-otp')
-@login_required
-def send_otp():
-    otp = str(random.randint(100000, 999999))
-    session['otp'] = otp
-    phone_number = session.get('phone_number', 'N/A')
-    whaNum = "+91"+phone_number
-    url = "https://graph.facebook.com/v22.0/753864777817921/messages"
-    headers = {
-    "Authorization": "Bearer EAALC3e2CyZBYBPQJGm7MjvXa8iBg2CpUV68dYVX6bqB0rCXKa1w5Ceq6VMyMttn7kv0Bqyv2jFhHJWVhnR2iccCpcjo2edeZB2bjPrHxMpkH4n5wS1Lt91ZBcD4lZB6nKEZAilqXySpKDtS4kmkydtPyM5IbyZBYDjaSTuc1y8PyGmQMgzb8jh22eW0mZCpLJ26RhcRNuKm6w80u0i0IJBNMsD7Q0LZALrCKN8ZAB5Y5ZByuLsggZDZD",
-    "Content-Type": "application/json"
-}
-    payload = {
-    "messaging_product": "whatsapp",
-    "to": "918015806129",
-    "type": "template",
-    "template": {
-        "name": "hello_world",
-        "language": { "code": "en_US" }
-    }
-
-    }
-
-    response = requests.post(url, headers=headers, json=payload)
-    print(response.json())
-
-    print("\n" + "="*50)
-    print(f"      OTP FOR USER: {session.get('username')}")
-    print(f"      PHONE NUMBER: {phone_number}")
-    print(f"      YOUR OTP IS: {otp}")
-    print("="*50 + "\n")
-    flash(f"An OTP has been sent to the console.", "info")
-    return redirect(url_for('verify_otp'))
-
 @app.route('/logout')
+@login_required
 def logout():
     session.clear()
     flash("You have been logged out.", "success")
     return redirect(url_for('login'))
 
-# --- Main Application Routes ---
+# --- Wiping Routes ---
 @app.route('/wipe-tool')
 @login_required
-@otp_verified_required
 def wipe_tool():
     return render_template('wipe_tool.html')
 
 @app.route('/browse')
 @login_required
-@otp_verified_required
 def browse_fs():
     wipe_type = request.args.get('type', 'file')
     if wipe_type == 'disk':
-        disks = get_physical_disks()
-        return jsonify({'disks': disks})
+        return jsonify({'disks': get_physical_disks()})
     path = request.args.get('path', None)
-    drives = [f"{letter}:\\" for letter in string.ascii_uppercase if os.path.exists(f"{letter}:\\")]
-    allowed_roots = [os.path.abspath(d) for d in drives]
     if not path:
-        return jsonify({'current_path': '', 'folders': allowed_roots, 'files': []})
-    requested_path = os.path.abspath(path)
-    if not any(requested_path.startswith(root) for root in allowed_roots):
-        return jsonify({"error": "Access denied."}), 403
+        if sys.platform == "win32":
+            drives = [f"{letter}:\\" for letter in string.ascii_uppercase if os.path.exists(f"{letter}:\\")]
+        else:
+            drives = ['/']
+        return jsonify({'current_path': '', 'folders': drives, 'files': []})
     try:
+        requested_path = os.path.abspath(path)
         items = os.listdir(requested_path)
         folders = sorted([item for item in items if os.path.isdir(os.path.join(requested_path, item))])
         files = sorted([item for item in items if not os.path.isdir(os.path.join(requested_path, item))])
         parent_path = os.path.dirname(requested_path)
-        if requested_path.rstrip('\\') in allowed_roots: parent_path = ''
+        if sys.platform != "win32" and parent_path == requested_path:
+            parent_path = ''
         return jsonify({'current_path': requested_path, 'parent_path': parent_path, 'folders': folders, 'files': files})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/wipe', methods=['POST'])
 @login_required
-@otp_verified_required
 def wipe_file_route():
     data = request.get_json()
     wipe_type = data.get('wipe_type')
@@ -201,20 +243,36 @@ def wipe_file_route():
     if not all([wipe_type, path, wipe_method]):
         return jsonify({'stderr': 'ERROR: Missing parameters.'}), 400
     if not os.path.exists(C_EXECUTABLE_PATH):
-        return jsonify({'stderr': f"ERROR: Executable not found. Please compile the C code."}), 500
+        return jsonify({'stderr': f"Executable not found at {C_EXECUTABLE_PATH}. Please compile it for your system."}), 500
+    command = [C_EXECUTABLE_PATH, f'--{wipe_type}', path, wipe_method]
+    process = subprocess.run(command, capture_output=True, text=True)
+    log_output = process.stdout + process.stderr
+    with open("wipe.log", "w") as f:
+        f.write(log_output)
+    if process.returncode != 0:
+        return jsonify({'stderr': log_output, 'success': False}), 500
     try:
-        command = [C_EXECUTABLE_PATH, f'--{wipe_type}', path, wipe_method]
-        process = subprocess.run(command, capture_output=True, text=True, check=False)
-        log_output = process.stdout + process.stderr
-        return jsonify({'log': log_output, 'success': process.returncode == 0})
+        cert_json, cert_pdf = generate_certificate("wipe.log", path)
     except Exception as e:
-        return jsonify({'stderr': f"An unexpected error occurred: {str(e)}"}), 500
+        return jsonify({'stderr': f"Certificate generation failed: {str(e)}"}), 500
+    return jsonify({
+        'log': log_output,
+        'success': True,
+        'certificate_json': cert_json,
+        'certificate_pdf': cert_pdf
+    })
 
-if __name__ == '__main__':
-    if not os.path.exists('users.db'):
-        print("ERROR: Database 'users.db' not found!")
-        print("Please run 'python database.py' once to create it.")
+@app.route('/download/<filename>')
+@login_required
+def download_file(filename):
+    if os.path.exists(filename):
+        return send_file(filename, as_attachment=True)
+    flash("File not found!", "danger")
+    return redirect(url_for('wipe_tool'))
+
+# --- Main ---
+if __name__ == "__main__":
+    if not os.path.exists("users.db"):
+        print("Database not found! Run 'database.py' first.")
     else:
-        print("Starting Zero Leaks server...")
-        print("Access the tool at http://127.0.0.1:5000")
-        app.run(host='0.0.0.0', port=5000, debug=False)
+        app.run(host="0.0.0.0", port=5000, debug=False)

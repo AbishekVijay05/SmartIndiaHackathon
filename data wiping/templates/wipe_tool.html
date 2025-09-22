@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Wipe Tool - Zero Leaks{% endblock %}
+{% block container_class %}container-large{% endblock %}
 {% block content %}
-
-<h1>Zero Leaks - Data Wiper</h1>
+<h1>Zero Leaks - Secure Data Wiper</h1>
 <form id="wipe-form">
     <div class="form-group">
         <label>Target Type:</label>
@@ -21,34 +21,38 @@
     </div>
     <div class="form-group">
         <label for="wipe-method">Wiping Method:</label>
-        <select id="wipe-method" style="width: 100%; padding: 10px; background-color: #343a40; border: 1px solid #6c757d; border-radius: 4px; color: #f8f9fa;">
+        <select id="wipe-method">
             <option value="--clear">Clear (1 Pass Zeros - NIST 800-88)</option>
             <option value="--purge" selected>Purge (3 Pass Overwrite - DoD 5220.22-M)</option>
             <option value="--destroy-sw">Destroy (7 Pass Overwrite - Software-Based)</option>
         </select>
     </div>
-    <button type="submit" style="width: 100%;">Start Wipe</button>
+    <button type="submit" id="start-wipe-btn">Start Wipe</button>
 </form>
 <div id="status-bar" class="status-bar"></div>
 <div style="margin-top: 25px;">
     <label>Log Output:</label>
     <pre id="log-output">Awaiting command...</pre>
 </div>
+<div id="certificate-links" style="margin-top: 20px; text-align: center;"></div>
 <div id="browser-modal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
             <h2 id="modal-path">Browser</h2>
-            <button type="button" id="select-folder-btn" style="display:none;">Select This Folder</button>
+            <button type="button" id="select-folder-btn" style="display:none; width: auto; background-color: #28a745;">Select This Folder</button>
             <span class="close-button">&times;</span>
         </div>
         <div id="modal-browser" class="file-browser"></div>
     </div>
 </div>
 <script>
+document.addEventListener('DOMContentLoaded', function () {
     const wipeForm = document.getElementById('wipe-form');
     const statusBar = document.getElementById('status-bar');
     const logOutput = document.getElementById('log-output');
     const pathDisplay = document.getElementById('path-display');
+    const startWipeBtn = document.getElementById('start-wipe-btn');
+    const certificateLinks = document.getElementById('certificate-links');
     const modal = document.getElementById('browser-modal');
     const browseBtn = document.getElementById('browse-btn');
     const closeBtn = document.querySelector('.close-button');
@@ -72,50 +76,53 @@
     async function loadBrowser(path = '') {
         const wipeType = getWipeType();
         modalPath.textContent = "Loading...";
-        modalBrowser.innerHTML = '';
-        let url = `/browse?type=${wipeType}`;
-        if (wipeType !== 'disk') { url += `&path=${encodeURIComponent(path)}`; }
-        const response = await fetch(url);
-        const data = await response.json();
-        if (wipeType === 'disk') {
-            selectFolderBtn.style.display = 'none';
-            modalPath.textContent = "Select a Physical Disk to Wipe";
+        modalBrowser.innerHTML = '<ul><li>Loading...</li></ul>';
+        let url = `/browse?type=${wipeType}&path=${encodeURIComponent(path)}`;
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            modalBrowser.innerHTML = '';
             const ul = document.createElement('ul');
-            data.disks.forEach(disk => {
-                const li = document.createElement('li');
-                li.innerHTML = `💾 ${disk.name}`;
-                li.onclick = () => { pathDisplay.value = disk.path; closeModal(); };
-                ul.appendChild(li);
-            });
-            modalBrowser.appendChild(ul);
-        } else {
-            selectFolderBtn.style.display = (wipeType === 'folder' && path) ? 'block' : 'none';
-            currentPathInModal = data.current_path;
-            modalPath.textContent = data.current_path || 'Select a Drive';
-            const ul = document.createElement('ul');
-            if (data.parent_path !== undefined) {
-                const li = document.createElement('li');
-                li.innerHTML = '⬆️ .. (Up)';
-                li.onclick = () => loadBrowser(data.parent_path);
-                ul.appendChild(li);
-            }
-            data.folders.forEach(folder => {
-                const li = document.createElement('li');
-                li.innerHTML = `📁 ${folder}`;
-                const newPath = data.current_path ? `${data.current_path}\\${folder}` : folder;
-                li.onclick = () => loadBrowser(newPath);
-                ul.appendChild(li);
-            });
-            if (wipeType === 'file') {
-                data.files.forEach(file => {
+            if (data.error) { ul.innerHTML = `<li>Error: ${data.error}</li>`; }
+            else if (wipeType === 'disk') {
+                selectFolderBtn.style.display = 'none';
+                modalPath.textContent = "Select a Physical Disk";
+                data.disks.forEach(disk => {
                     const li = document.createElement('li');
-                    li.innerHTML = `📄 ${file}`;
-                    li.onclick = () => { pathDisplay.value = `${data.current_path}\\${file}`; closeModal(); };
+                    li.innerHTML = `💾 ${disk.name}`;
+                    li.onclick = () => { pathDisplay.value = disk.path; closeModal(); };
                     ul.appendChild(li);
                 });
+            } else {
+                selectFolderBtn.style.display = (wipeType === 'folder' && path) ? 'block' : 'none';
+                currentPathInModal = data.current_path;
+                modalPath.textContent = data.current_path || 'Select a Drive';
+                if (data.parent_path) {
+                    const li = document.createElement('li');
+                    li.innerHTML = '⬆️ .. (Up)';
+                    li.onclick = () => loadBrowser(data.parent_path);
+                    ul.appendChild(li);
+                }
+                const pathSeparator = data.current_path && (data.current_path.includes('\\')) ? '\\' : '/';
+                data.folders.forEach(folder => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `📁 ${folder}`;
+                    const newPath = data.current_path ? (data.current_path.endsWith(pathSeparator) ? data.current_path + folder : data.current_path + pathSeparator + folder) : folder;
+                    li.onclick = () => loadBrowser(newPath);
+                    ul.appendChild(li);
+                });
+                if (wipeType === 'file') {
+                    data.files.forEach(file => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `📄 ${file}`;
+                        const newPath = data.current_path ? (data.current_path.endsWith(pathSeparator) ? data.current_path + file : data.current_path + pathSeparator + file) : file;
+                        li.onclick = () => { pathDisplay.value = newPath; closeModal(); };
+                        ul.appendChild(li);
+                    });
+                }
             }
             modalBrowser.appendChild(ul);
-        }
+        } catch (error) { modalBrowser.innerHTML = `<ul><li>Failed to load file browser.</li></ul>`; }
     }
     wipeForm.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -123,14 +130,16 @@
         const path = pathDisplay.value;
         const wipeMethod = document.getElementById('wipe-method').value;
         if (!path) { alert('Please select a target to wipe.'); return; }
-        let confirmMessage = `Are you sure you want to permanently wipe the ${wipeType} "${path}"?`;
-        if (wipeType === 'folder') confirmMessage = `DANGER!\n\nYou are about to permanently delete the folder "${path}" and ALL its contents.\n\nThis action cannot be undone. Are you absolutely sure?`;
-        if (wipeType === 'disk') confirmMessage = `EXTREME DANGER!\n\nYou are about to wipe the ENTIRE DISK "${path}".\n\nThis will destroy ALL partitions, ALL data, and the operating system if it is the OS disk.\n\nTHIS IS IRREVERSIBLE. Are you absolutely, positively sure?`;
+        let confirmMessage = `Are you sure you want to permanently wipe the ${wipeType} "${path}"? This cannot be undone.`;
+        if (wipeType === 'disk') confirmMessage = `EXTREME DANGER! This will wipe the ENTIRE DISK "${path}", destroying ALL data and partitions. Are you absolutely sure?`;
         if (!confirm(confirmMessage)) return;
         logOutput.textContent = 'Wiping in progress... Please wait.';
         statusBar.style.display = 'block';
         statusBar.textContent = 'Data wipe initiated... This may take a long time.';
         statusBar.className = 'status-bar status-success';
+        startWipeBtn.disabled = true;
+        startWipeBtn.textContent = 'Wiping...';
+        certificateLinks.innerHTML = '';
         try {
             const response = await fetch('/wipe', {
                 method: 'POST',
@@ -142,15 +151,24 @@
             if (result.success) {
                 statusBar.textContent = 'Wipe completed successfully.';
                 statusBar.className = 'status-bar status-success';
+                certificateLinks.innerHTML = `<p style="font-weight: bold; font-size: 1.1em;">Download Certificate:</p><a href="/download/${result.certificate_json}" target="_blank" class="btn-download">Download JSON</a> <a href="/download/${result.certificate_pdf}" target="_blank" class="btn-download">Download PDF</a>`;
             } else {
-                statusBar.textContent = 'Wipe failed. Check logs.';
+                statusBar.textContent = 'Wipe failed. Check logs for details.';
                 statusBar.className = 'status-bar status-error';
             }
         } catch (error) {
-            statusBar.textContent = 'An error occurred.';
+            statusBar.textContent = 'An application error occurred.';
             statusBar.className = 'status-bar status-error';
-            logOutput.textContent = `Error: ${error}`;
+            logOutput.textContent = `Client-side error: ${error}`;
+        } finally {
+            startWipeBtn.disabled = false;
+            startWipeBtn.textContent = 'Start Wipe';
         }
     });
+});
 </script>
+<style>
+    .btn-download { display: inline-block; padding: 10px 20px; margin: 5px; background-color: var(--success); color: white; text-decoration: none; border-radius: 8px; font-weight: 500; transition: background-color 0.2s ease; }
+    .btn-download:hover { background-color: #218838; }
+</style>
 {% endblock %}
