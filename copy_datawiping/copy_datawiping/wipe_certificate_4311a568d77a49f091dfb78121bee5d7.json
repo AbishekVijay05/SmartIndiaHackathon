@@ -1,0 +1,9 @@
+{
+    "cert_id": "3b30523d-9cbb-45b9-81fe-a5a984d24e34",
+    "tool_version": "1.1_cross_platform",
+    "target_path": "X:\\1.docx",
+    "end_time": "2025-09-23T04:25:31.753564Z",
+    "log_sha256": "56dbede00f248328a40831b34158c13c374219af2cbc0d5e837e14291d09838e",
+    "signature": "d3uu/n3skec9h16kICdQ9qzUIET+As3n7wHrj9V0dkrLZ9zCY7m7PMYzBBvN7dFoFph/lrlS/Yck9x96aUpajCSJi/Os+J9Nkosu2yDO1ggMMjLFyqAk7oXG4GAz+1bxXgBdyVGqCRr3dwIxKMdl+bh9y8SJHNLvBJ+Q9Y8sddpXEpb8NTSvzGIdByJ1cr7XdfchMqvgEmjostZQ9XcCUjGFYyNCqtD333EW7IkPrevZZxh0XSM7SUJtMC5Sm+llJAXYyJ/fegcSFukLpgl/mH/6DbOywnqPlxghbevYkWDgNcJEyiuwuOPfAODiZAM0LPJtTsMDVy/1Be2Wx6fsBw==",
+    "public_key_fingerprint_sha256": "36c5633b3c9c5b031929b59a0b3d86ef12254c3d7c7a669d0bb796f6c3f689d6"
+}

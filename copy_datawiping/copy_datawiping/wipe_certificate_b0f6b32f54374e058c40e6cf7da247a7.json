@@ -1,0 +1,9 @@
+{
+    "cert_id": "b1dcedfe-c428-47ac-b4bb-16e90785fa2e",
+    "tool_version": "1.1_cross_platform",
+    "target_path": "D:\\SEM-3\\CSE-R22-UPTO-3RD-SEM.pdf",
+    "end_time": "2025-09-23T07:55:14.761597Z",
+    "log_sha256": "da509aa22fd36f27fec0e496f79888a5e0ce24c866a8d03a9881f72333f934f9",
+    "signature": "JUoIBaCTc2LIb8kq7zFCEHCCT/rPkGqT2qisLsALXqG0HgOuE+gN82JJzIZPFQoYMmv96J6erMva0nU9CqsXMpnLDFUFto+IfFv3iMLxw9eH8HOZTRfsxQa06wij/J99Fa51yuh+D5onqsbPmP2wTRiURKnNsIAe1scN/tYSL+ZUjjGvV/fEO+M/0dw05nAH2OrvCpaYHQo7WR0R4GmIRNV/BDm6s77WlrltveeumRP6g7G9PHOEenzEVX+hEWH4tE5cKb1xBC6kz6bflu1s38x82ZLhPqaovYogmdYEmfH7kPQnTkxnuxYiDoMc5tMsealuZeIU3KxR+fI25YiOpA==",
+    "public_key_fingerprint_sha256": "36c5633b3c9c5b031929b59a0b3d86ef12254c3d7c7a669d0bb796f6c3f689d6"
+}

@@ -1,0 +1,9 @@
+{
+    "cert_id": "fffc1430-3142-47b0-bd95-c4924f62110f",
+    "tool_version": "1.1_cross_platform",
+    "target_path": "E:\\copy_datawiping",
+    "end_time": "2025-09-22T20:33:40.605510Z",
+    "log_sha256": "83dc7f995919e0b483a9b1de6ba184982fc1219780a08faa860f0d843df8519e",
+    "signature": "Vf+saZ6DzYq0tP+OionOy1o+nSICg7YnqnzyZ5kF+yrEJgPJlc0mrJUCZ5FmoZgWjniKHE4gFjMnHR7h44J9F0sjvJPCS2kOd8D2fkJDV7kSp8NA694eV3kMiEqpUK5QdfNydm4Kvn3y7nwFvQEKl69NgNQfOhlCezgdcMCClGyCcp/h8jnjfl5eq515WyAY2UdLMVGrhZn/F6TEPCn0043NHC1fRtWs3420D+1j2rNUwrkrR+KjUVccc+hafvdYYLO9kU96HW083o/6rkIzY1w0diwV3PI56g1xNemUNTvBE/I4pg+Mv5ydSvK/UcwEyQrr6lXMZpYfz7B8WYapIQ==",
+    "public_key_fingerprint_sha256": "36c5633b3c9c5b031929b59a0b3d86ef12254c3d7c7a669d0bb796f6c3f689d6"
+}

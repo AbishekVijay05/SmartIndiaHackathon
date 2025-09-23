@@ -1,0 +1,9 @@
+{
+    "cert_id": "10f76548-a826-4278-af1d-5ff893584d89",
+    "tool_version": "1.1_cross_platform",
+    "target_path": "X:\\community.jpg",
+    "end_time": "2025-09-23T05:59:25.144487Z",
+    "log_sha256": "62ba729f0fe9d0aba392154d4583c7fbdf3fd454d660f827dae093d4d53fc210",
+    "signature": "AspHQhRUElaSnVg5T4bwM4aAeExLXDFmILz8HCPXPeEvvDI1HdWqJOKXziQz6JADNQoyrR4xPyTKZbbXnxhlX8cSy7C+KFHFtzVclMdJvSfaW2El4o9EYsS3xrzzArAY49brRjtHtk0wpxmpfYUtXDkBgKMxOYZyro57lPMe8rmReN9+A8Tgum3OUUcTYlPbBlb8FSC5pEpneHA4QhARZXOopmBmKLmOyF+XTKvtb6XTaFsamoqSG/1U9vtbKfHi3nieH7lQO+EPMhkzkVTgOgrKYt1PAdvAduWR2FnXFPMKYvgI9ulOCN48Xx9xGQIt6p+kfZw2eaw5aeaoRnZrRw==",
+    "public_key_fingerprint_sha256": "36c5633b3c9c5b031929b59a0b3d86ef12254c3d7c7a669d0bb796f6c3f689d6"
+}

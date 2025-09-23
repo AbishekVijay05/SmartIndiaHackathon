@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Zero Leaks{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Header / Navbar -->
+    <header class="navbar">
+        <div class="logo-section">
+            <img src="{{ url_for('static', filename='crabEX.jpg') }}" alt="CRABEX Logo" class="logo">
+            <span class="brand">CRABEX</span>
+        </div>
+        <nav>
+            {% if session.get('user_id') %}
+                <span class="welcome">Hello, <strong>{{ session['username'] }}</strong></span>
+                <a href="{{ url_for('home') }}">Home</a>
+                <a href="{{ url_for('wipe_tool') }}" class="{% if request.endpoint == 'wipe_tool' %}active{% endif %}">Wipe Tool</a>
+                <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About</a>
+               
+                <a href="{{ url_for('logout') }}">Logout</a>
+
+                 
+            {% else %}
+             <a href="{{ url_for('home') }}">Home</a>
+              
+                <a href="{{ url_for('login') }}" class="{% if request.endpoint == 'login' %}active{% endif %}">Login</a>
+                <a href="{{ url_for('signup') }}" class="{% if request.endpoint == 'signup' %}active{% endif %}">Sign Up</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <!-- Flash Messages -->
+    <div class="alert-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="container {% block container_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2025 CRABEX - Zero Leaks. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // Auto-hide flash alerts after 4 seconds
+        document.addEventListener("DOMContentLoaded", () => {
+            const alerts = document.querySelectorAll(".alert");
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.transition = "opacity 0.6s ease";
+                    alert.style.opacity = "0";
+                    setTimeout(() => alert.remove(), 600); // remove after fade
+                }, 4000); // 4 seconds
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+{% block title %}About - Zero Leaks{% endblock %}
+
+{% block content %}
+<!-- Page-specific styles (scoped to this page) -->
+<style>
+/* Bypass base .container for only this page */
+.container {
+  max-width: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Page layout wrapper */
+.page-about { width:100%; padding: 40px 20px 80px; }
+
+/* main grid */
+.about-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 320px 1fr 360px; /* left | center | right */
+  gap: 32px;
+  align-items: start;
+}
+
+/* LEFT: sticky about card */
+.about-aside {
+  position: sticky;
+  top: 110px;
+  padding: 32px;
+  border-radius: 16px;
+  min-height: 360px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+  background: linear-gradient(180deg, #00c3ff 0%, #0066ff 55%, #001133 100%);
+}
+.about-aside h2 { font-size: 28px; margin: 0 0 12px; line-height: 1.05; }
+.about-aside .muted { color: rgba(255,255,255,0.95); margin-bottom: 18px; font-size: 1rem; line-height: 1.5; }
+
+/* CTA button inside left card */
+.about-aside .btn-primary {
+  display: inline-block;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #fff;
+  color: #0066ff;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 8px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+}
+
+/* CENTER: features */
+.about-features {
+  background: #fff;
+  border-radius: 16px;
+  padding: 36px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+.section-title { font-size: 22px; text-align: center; margin-bottom: 18px; color: #0f172a; }
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+.feature-card {
+  padding: 22px;
+  border-radius: 12px;
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(2,6,23,0.06);
+  transition: transform .28s ease, box-shadow .28s ease;
+}
+.feature-card:hover { transform: translateY(-8px); box-shadow: 0 16px 40px rgba(2,6,23,0.10); }
+.feature-card .icon { font-size: 1.8rem; margin-bottom: 12px; }
+.feature-card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.feature-card p { color: #6b7280; font-size: 0.95rem; line-height: 1.6; }
+
+/* RIGHT: FAQ */
+.about-faq {
+  background: #fff;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+}
+.about-faq .section-title { text-align: left; margin-bottom: 14px; }
+.accordion-item { margin-bottom: 12px; border-radius: 10px; overflow: hidden; background: #fff; border: 1px solid rgba(0,0,0,0.06); }
+.accordion-header {
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  font-weight: 600;
+  background: #fbfbfd;
+  border: none;
+  cursor: pointer;
+}
+/* Added scroll box styling for FAQ content */
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  padding: 0 16px;
+  transition: max-height .35s ease, padding .35s ease;
+  color: #374151;
+}
+.accordion-item.active .accordion-content { 
+  max-height: 150px; 
+  padding: 12px 16px 18px; 
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+.accordion-item.active .accordion-content::-webkit-scrollbar {
+  width: 6px;
+}
+.accordion-item.active .accordion-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+.accordion-item.active .accordion-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+.accordion-item.active .accordion-content::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Chatbot styling */
+.chatbot-section {
+  margin-top: 24px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 20px;
+}
+
+.chatbot-title {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.chatbot-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fafafa;
+  overflow: hidden;
+}
+
+.chatbot-messages {
+  height: 200px;
+  overflow-y: auto;
+  padding: 12px;
+  background: #fff;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.chatbot-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chatbot-messages::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.chatbot-messages::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.bot-message, .user-message {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.user-message {
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.bot-message .message-avatar {
+  background: #e0f2fe;
+}
+
+.user-message .message-avatar {
+  background: #0066ff;
+  color: white;
+}
+
+.message-content {
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 80%;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.user-message .message-content {
+  background: #0066ff;
+  color: white;
+}
+
+.chatbot-input-area {
+  display: flex;
+  padding: 12px;
+  background: #fafafa;
+  border-top: 1px solid #e5e7eb;
+}
+
+.chatbot-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.chatbot-input:focus {
+  border-color: #0066ff;
+  box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.1);
+}
+
+.chatbot-send {
+  margin-left: 8px;
+  padding: 8px 16px;
+  background: #0066ff;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.chatbot-send:hover {
+  background: #0052cc;
+}
+
+.chatbot-send:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+  max-width: 80px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  background: #9ca3af;
+  border-radius: 50%;
+  animation: typing 1.4s infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0.3; }
+  30% { opacity: 1; }
+}
+
+
+
+/* Added body padding to prevent footer overlap */
+body {
+  padding-bottom: 80px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1100px) {
+  .about-wrapper { grid-template-columns: 1fr; padding: 0 12px; }
+  .about-aside { position: relative; min-height: auto; order: -1; padding: 20px; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .about-faq { padding: 18px; }
+}
+
+/* Small screens tweak */
+@media (max-width: 480px) {
+  .about-aside h2 { font-size: 22px; }
+  .section-title { font-size: 18px; }
+  .feature-card { padding: 16px; }
+}
+</style>
+
+<div class="page-about">
+  <div class="about-wrapper">
+    <!-- LEFT -->
+    <aside class="about-aside">
+      <h2>About <span style="color: #ffd24d">Zero Leaks</span></h2>
+      <p class="muted">Secure data wiping using industry-standard methods. Protect privacy and produce auditable certificates.</p>
+      <a class="btn-primary" href="{{ url_for('signup') }}">🚀 Get Started</a>
+    </aside>
+
+    <!-- CENTER -->
+    <section class="about-features">
+      <h3 class="section-title">Why Choose Us?</h3>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">🗑</div>
+          <h3>Permanent Erasure</h3>
+          <p>Files overwritten multiple times so recovery is not possible with standard tools.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">⚡</div>
+          <h3>Fast & Reliable</h3>
+          <p>Pick quick or multi-pass wipes to balance speed and security.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">🔒</div>
+          <h3>Privacy First</h3>
+          <p>No telemetry, transparent operations, and server-side validations.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">📄</div>
+          <h3>Wipe Certificates</h3>
+          <p>Produce JSON/PDF certificates after successful wipes for audit trails.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT -->
+    <aside class="about-faq">
+      <h3 class="section-title">Commonly Asked Questions</h3>
+
+      <div class="accordion">
+        <div class="accordion-item">
+          <button class="accordion-header">How is Zero Leaks different?</button>
+          <!-- Added more detailed content to demonstrate scrolling -->
+          <div class="accordion-content">
+            <p>We overwrite data using configured passes and produce certificates for proof of deletion.</p>
+            <p>Our multi-pass overwriting ensures that data cannot be recovered using standard forensic tools. Unlike simple file deletion, we physically overwrite the storage sectors multiple times with random data patterns.</p>
+            <p>Additionally, we provide detailed audit certificates in both JSON and PDF formats for compliance and verification purposes.</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-header">Is it safe to use?</button>
+          <!-- Added more detailed content to demonstrate scrolling -->
+          <div class="accordion-content">
+            <p>Yes — targets are validated and the UI warns heavily before destructive actions. Avoid wiping system disks unintentionally.</p>
+            <p>Our safety measures include:</p>
+            <ul>
+              <li>Pre-validation of target drives and files</li>
+              <li>Multiple confirmation dialogs for destructive operations</li>
+              <li>System disk protection to prevent accidental OS wiping</li>
+              <li>Backup verification before proceeding with wipe operations</li>
+            </ul>
+            <p>Always ensure you have proper backups before using any data destruction tool.</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-header">Which methods are available?</button>
+          <!-- Added more detailed content to demonstrate scrolling -->
+          <div class="accordion-content">
+            <p>Clear (1-pass), Purge (3-pass), Destroy (7-pass).</p>
+            <p><strong>Clear (1-pass):</strong> Single overwrite with zeros. Fast but basic security level.</p>
+            <p><strong>Purge (3-pass):</strong> Three-pass overwrite with random data patterns. Good balance of speed and security.</p>
+            <p><strong>Destroy (7-pass):</strong> Seven-pass overwrite following DoD 5220.22-M standard. Maximum security for highly sensitive data.</p>
+            <p>Choose the method based on your security requirements and time constraints.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chatbot section -->
+      <div class="chatbot-section">
+        <h4 class="chatbot-title">💬 Ask Our Assistant</h4>
+        <div class="chatbot-container">
+          <div class="chatbot-messages" id="chatMessages">
+            <div class="bot-message">
+              <div class="message-avatar">🤖</div>
+              <div class="message-content">
+                Hi! I'm here to help answer your questions about Zero Leaks. What would you like to know?
+              </div>
+            </div>
+          </div>
+          <div class="chatbot-input-area">
+            <input type="text" id="chatInput" placeholder="Type your question here..." class="chatbot-input">
+            <button id="sendButton" class="chatbot-send">Send</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Chatbot functionality
+  const chatMessages = document.getElementById('chatMessages');
+  const chatInput = document.getElementById('chatInput');
+  const sendButton = document.getElementById('sendButton');
+
+  // Predefined responses for common questions
+  const responses = {
+    'how does it work': 'Zero Leaks uses multi-pass overwriting to permanently delete data. We overwrite storage sectors multiple times with random patterns, making data recovery impossible with standard tools.',
+    'is it safe': 'Yes, Zero Leaks includes multiple safety measures: target validation, confirmation dialogs, system disk protection, and backup verification before operations.',
+    'what methods': 'We offer three methods: Clear (1-pass, fast), Purge (3-pass, balanced), and Destroy (7-pass, maximum security following DoD standards).',
+    'certificate': 'After successful wipes, Zero Leaks generates audit certificates in JSON and PDF formats for compliance and verification purposes.',
+    'pricing': 'Please visit our pricing page or contact our sales team for detailed pricing information based on your specific needs.',
+    'support': 'Our support team is available 24/7. You can reach us through the contact form or email support@zeroleaks.com.',
+    'compliance': 'Zero Leaks follows industry standards including DoD 5220.22-M for secure data destruction and provides audit trails for compliance.',
+    'recovery': 'No, data wiped with Zero Leaks cannot be recovered. Our multi-pass overwriting ensures permanent deletion that exceeds forensic recovery capabilities.'
+  };
+
+  function addMessage(content, isUser = false) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = isUser ? 'user-message' : 'bot-message';
+    
+    messageDiv.innerHTML = `
+      <div class="message-avatar">${isUser ? '👤' : '🤖'}</div>
+      <div class="message-content">${content}</div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function showTypingIndicator() {
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'bot-message typing-message';
+    typingDiv.innerHTML = `
+      <div class="message-avatar">🤖</div>
+      <div class="typing-indicator">
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+        <div class="typing-dot"></div>
+      </div>
+    `;
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    return typingDiv;
+  }
+
+  function getBotResponse(userMessage) {
+    const message = userMessage.toLowerCase();
+    
+    for (const [key, response] of Object.entries(responses)) {
+      if (message.includes(key)) {
+        return response;
+      }
+    }
+    
+    return "I'd be happy to help! You can ask me about how Zero Leaks works, safety measures, wiping methods, certificates, pricing, or support. What specific aspect would you like to know more about?";
+  }
+
+  function sendMessage() {
+    const message = chatInput.value.trim();
+    if (!message) return;
+
+    // Add user message
+    addMessage(message, true);
+    chatInput.value = '';
+    sendButton.disabled = true;
+
+    // Show typing indicator
+    const typingIndicator = showTypingIndicator();
+
+    // Simulate bot response delay
+    setTimeout(() => {
+      typingIndicator.remove();
+      const response = getBotResponse(message);
+      addMessage(response);
+      sendButton.disabled = false;
+      chatInput.focus();
+    }, 1000 + Math.random() * 1000);
+  }
+
+  sendButton.addEventListener('click', sendMessage)
+  chatInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      sendMessage();
+    }
+  });
+
+  // Existing accordion functionality
+  const items = document.querySelectorAll('.accordion-item');
+  items.forEach(item => {
+    const btn = item.querySelector('.accordion-header');
+    const panel = item.querySelector('.accordion-content');
+    btn.addEventListener('click', () => {
+      const open = item.classList.contains('active');
+      items.forEach(i => {
+        i.classList.remove('active');
+        i.querySelector('.accordion-content').style.maxHeight = null;
+      });
+      if (!open) {
+        item.classList.add('active');
+        panel.style.maxHeight = panel.scrollHeight + 'px';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}
